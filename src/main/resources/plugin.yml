@@ -1,0 +1,4 @@
+name: pizRoullet
+version: '${version}'
+main: com.pizroullet.PizRoullet
+api-version: 1.21
