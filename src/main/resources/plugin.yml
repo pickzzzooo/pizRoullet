@@ -2,3 +2,11 @@ name: pizRoullet
 version: '${version}'
 main: com.pizroullet.PizRoullet
 api-version: 1.21
+
+depend: [pizDonation]
+
+commands:
+  다룰:
+    description: "다이아룰렛 관리자 GUI 창을 엽니다."
+    permission: roulette.admin
+    permission-message: "§c이 명령어를 사용할 권한이 없습니다."

@@ -1,0 +1,15 @@
+# 다이아 룰렛 벌칙 가중치 설정
+# 0으로 설정 시 해당 벌칙은 비활성화(Off)됩니다.
+# 숫자가 높을수록 당첨 확률이 증가합니다. (예: 1과 3이면 각각 25%, 75% 확률)
+roulette-rewards:
+  diamond_increase: 10
+  monster_spawn: 15
+  lava_place: 5
+  drop_all: 2
+  resize_player: 8
+  random_teleport: 12
+  tnt_spawn: 10
+  sand_prison: 7
+  cobweb_prison: 7
+  water_clutch: 5
+  jump_map: 5
