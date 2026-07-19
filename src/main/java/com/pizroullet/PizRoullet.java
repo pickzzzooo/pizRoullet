@@ -1,9 +1,6 @@
 package com.pizroullet;
 
-import com.pizroullet.listner.RouletteGameListener;
-import com.pizroullet.listner.RouletteGuiListener;
-import com.pizroullet.listner.RouletteItemListener;
-import com.pizroullet.listner.ToonationListener;
+import com.pizroullet.listner.*;
 import com.pizroullet.manager.RouletteConfigManager;
 import com.pizroullet.util.RouletteProbabilityCalculator;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -31,6 +28,7 @@ public class PizRoullet extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new RouletteGameListener(), this);
         getServer().getPluginManager().registerEvents(new RouletteItemListener(), this);
         getServer().getPluginManager().registerEvents(new ToonationListener(), this);
+        getServer().getPluginManager().registerEvents(new ChzzkListener(), this);
         
         // 명령어 등록
         RouletteCommand rouletteCommand = new RouletteCommand();

@@ -40,10 +40,15 @@ public class ToonationListener implements Listener {
             return;
         }
 
+        // 닉네임 null 체크 및 치환
         String nickname = event.getNickname();
+        if (nickname == null || nickname.trim().isEmpty()) {
+            nickname = "익명";
+        }
+
         long amount = event.getAmount();
 
-        Bukkit.broadcastMessage("§e[Toonation] §f" + nickname + "님이 §a" + amount + "원§f을 후원하셨습니다!");
+        Bukkit.broadcastMessage("§e[Toonation] §f" + nickname + "님이 §a" + amount + "원§f을 후원하셨습니다.");
 
         RouletteConfigManager configManager = PizRoullet.getInstance().getConfigManager();
 
@@ -52,7 +57,7 @@ public class ToonationListener implements Listener {
 
         if (fixedReward != null) {
             // [변경] 룰렛 애니메이션 없이 즉시 벌칙 실행!
-            Bukkit.broadcastMessage("§c§l[지정 후원] §e" + nickname + "§f님의 지정 금액 후원으로 §4§l" + fixedReward.getDisplayName() + "§f 벌칙이 즉시 발동합니다!");
+            Bukkit.broadcastMessage("§c§l[지정 벌칙] §e" + nickname + "§f님이 §4§l" + fixedReward.getDisplayName() + "§f 를 발동했습니다.");
 
             // 마인크래프트 안전을 위해 메인 스레드에서 즉시 실행 보장
             Bukkit.getScheduler().runTask(PizRoullet.getInstance(), () -> {
@@ -80,92 +85,99 @@ public class ToonationListener implements Listener {
     }
 
     private static void checkAndProcessNext() {
-        if (isProcessing || donationQueue.isEmpty()) {
-            return;
-        }
+        // 마인크래프트 메인 스레드에서 안전하게 실행되도록 보장
+        Bukkit.getScheduler().runTask(PizRoullet.getInstance(), () -> {
+            if (isProcessing || donationQueue.isEmpty() || RouletteManager.isPausedByDeath()) {
+                return;
+            }
 
-        isProcessing = true;
+            isProcessing = true;
 
-        DonationData data = donationQueue.poll();
-        if (data == null) {
-            isProcessing = false;
-            return;
-        }
-
-        RewardType finalReward;
-
-        // [핵심 변경] data.forcedReward가 존재하면 룰렛 연출 후 '확정 벌칙'이 발동되도록 설정
-        if (data.forcedReward != null) {
-            finalReward = data.forcedReward;
-        } else {
-            // 실제 도네이션 유입 시 일반 추첨 엔진 가동 (이전과 동일)
-            if (!RouletteManager.isRunning()) {
+            DonationData data = donationQueue.poll();
+            if (data == null) {
                 isProcessing = false;
                 return;
             }
-            // 기존 확률 계산기 연동 (null 방어 코드 포함)
-            finalReward = PizRoullet.getInstance().getProbabilityCalculator().drawReward();
-            if (finalReward == null) {
-                RewardType[] allTypes = RewardType.values();
-                finalReward = allTypes[(int) (Math.random() * allTypes.length)];
-            }
-        }
 
-        final RewardType chosenReward = finalReward;
-
-        new BukkitRunnable() {
-            int ticks = 0;
-            final int maxTicks = 20; // 룰렛 셔플 타임 = 2초
-            final RewardType[] allRewards = RewardType.values();
-
-            @Override
-            public void run() {
-                if (data.forcedReward == null && !RouletteManager.isRunning()) {
-                    donationQueue.clear();
-                    isProcessing = false;
-                    this.cancel();
-                    return;
-                }
-
-                if (ticks < maxTicks) {
-                    RewardType shuffleType = allRewards[(int) (Math.random() * allRewards.length)];
-                    String rollerMsg = "§f[ §e" + shuffleType.getDisplayName() + " §f]";
-
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        p.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(rollerMsg));
-                        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
-                    }
+            RewardType finalReward = null;
+            try {
+                // [변경] data.forcedReward가 존재하면 룰렛 연출 후 '확정 벌칙'이 발동되도록 설정
+                if (data.forcedReward != null) {
+                    finalReward = data.forcedReward;
                 } else {
-                    this.cancel();
-
-                    String finalDisplay = chosenReward.getDisplayName();
-                    Bukkit.broadcastMessage("§d§l[룰렛 결과] §e" + data.nickname + "§f님의 룰렛 결과 §c§l" + finalDisplay + "§f 당첨!");
-
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        p.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText("§c§l 당첨 벌칙: " + finalDisplay));
-                        p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.2f);
-                    }
-
-                    // 인게임 아이템에 영향을 주는 벌칙 로직 메인 스레드 실행
-                    Bukkit.getScheduler().runTask(PizRoullet.getInstance(), () -> {
-                        RoulettePenaltyManager.executeReward(chosenReward);
-                    });
-
-                    long nextDelayTicks = 100L; // 평소 일반 벌칙일 때 대기 시간: 5초 (60틱)
-
-                    if (chosenReward.getConfigKey().equalsIgnoreCase("SKYDIVING") || chosenReward.name().contains("SKY")) {
-                        nextDelayTicks = 300L; // 스카이다이빙인 경우에만 정확히 10초 (200틱) 대기
-                    }
-
-// 계산된 동적 지연 시간(nextDelayTicks)을 대입하여 다음 큐 실행
-                    Bukkit.getScheduler().runTaskLater(PizRoullet.getInstance(), () -> {
+                    if (!RouletteManager.isRunning()) {
+                        donationQueue.clear();
                         isProcessing = false;
-                        checkAndProcessNext();
-                    }, nextDelayTicks);
+                        return;
+                    }
+                    // 기존 확률 계산기 연동 (null 방어 코드 포함)
+                    finalReward = PizRoullet.getInstance().getProbabilityCalculator().drawReward();
+                    if (finalReward == null) {
+                        RewardType[] allTypes = RewardType.values();
+                        finalReward = allTypes[(int) (Math.random() * allTypes.length)];
+                    }
                 }
-                ticks++;
+            } catch (Exception e) {
+                PizRoullet.getInstance().getLogger().severe("룰렛 추첨 중 오류 발생: " + e.getMessage());
+                e.printStackTrace();
+                isProcessing = false; // 에러 발생 시 플래그 락 해제
+                return;
             }
-        }.runTaskTimer(PizRoullet.getInstance(), 0L, 2L);
+
+            final RewardType chosenReward = finalReward;
+
+            new BukkitRunnable() {
+                int ticks = 0;
+                final int maxTicks = 20; // 룰렛 셔플 타임 = 2초
+                final RewardType[] allRewards = RewardType.values();
+
+                @Override
+                public void run() {
+                    // 연출 도중 게임이 꺼졌을 때 처리
+                    if (data.forcedReward == null && !RouletteManager.isRunning()) {
+                        donationQueue.clear();
+                        isProcessing = false;
+                        this.cancel();
+                        return;
+                    }
+
+                    if (ticks < maxTicks) {
+                        RewardType shuffleType = allRewards[(int) (Math.random() * allRewards.length)];
+                        String rollerMsg = "§f[ §e" + shuffleType.getDisplayName() + " §f]";
+
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(rollerMsg));
+                            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+                        }
+                    } else {
+                        this.cancel();
+
+                        String finalDisplay = chosenReward.getDisplayName();
+                        Bukkit.broadcastMessage("§d§l[룰렛 결과] §e" + data.nickname + "§f님의 룰렛 결과 §c§l" + finalDisplay + "§f 당첨!");
+
+                        for (Player p : Bukkit.getOnlinePlayers()) {
+                            p.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText("§c§l 당첨 벌칙: " + finalDisplay));
+                            p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 1.0f, 1.2f);
+                        }
+
+                        // 인게임 아이템에 영향을 주는 벌칙 로직 메인 스레드 실행
+                        RoulettePenaltyManager.executeReward(chosenReward);
+
+                        long nextDelayTicks = 100L; // 평소 일반 벌칙일 때 대기 시간: 5초 (60틱)
+                        if (chosenReward.getConfigKey().equalsIgnoreCase("SKYDIVING") || chosenReward.name().contains("SKY")) {
+                            nextDelayTicks = 300L; // 스카이다이빙인 경우에만 정확히 10초 대기
+                        }
+
+                        // 계산된 동적 지연 시간 후 다음 큐 실행
+                        Bukkit.getScheduler().runTaskLater(PizRoullet.getInstance(), () -> {
+                            isProcessing = false;
+                            checkAndProcessNext();
+                        }, nextDelayTicks);
+                    }
+                    ticks++;
+                }
+            }.runTaskTimer(PizRoullet.getInstance(), 0L, 2L);
+        });
     }
 
     public static int getQueueSize() {
@@ -177,5 +189,42 @@ public class ToonationListener implements Listener {
         // 플레이어가 접속하면 현재 다이아 룰렛이 켜져 있는지 확인하고 스코어보드를 장착시킵니다.
         Player player = event.getPlayer();
         com.pizroullet.manager.RouletteManager.applyScoreboardToPlayer(player);
+    }
+
+    /**
+     * 치지직 등 외부 플랫폼 리스너에서 일반 룰렛 큐에 데이터를 안전하게 삽입하기 위한 API
+     */
+    public static void addDonationToQueue(String nickname) {
+        donationQueue.add(new DonationData(nickname, null));
+        checkAndProcessNext();
+    }
+
+    /**
+     * 룰렛 참가자가 사망했을 때 감지하여 플래그를 true로 전환
+     */
+    @EventHandler
+    public void onParticipantDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
+        if (!RouletteManager.isRunning()) return;
+
+        Player participant = RouletteManager.getParticipant();
+        if (participant != null && event.getEntity().getUniqueId().equals(participant.getUniqueId())) {
+            RouletteManager.setParticipantDead(true);
+        }
+    }
+
+    /**
+     * 룰렛 참가자가 리스폰(부활)했을 때 감지하여 큐 처리를 재개
+     */
+    @EventHandler
+    public void onParticipantRespawn(org.bukkit.event.player.PlayerRespawnEvent event) {
+        if (!RouletteManager.isRunning()) return;
+
+        Player participant = RouletteManager.getParticipant();
+        if (participant != null && event.getPlayer().getUniqueId().equals(participant.getUniqueId())) {
+            RouletteManager.setParticipantDead(false);
+
+            // 부활했으므로 밀려있던 큐가 있다면 즉시 다시 가동
+            checkAndProcessNext();
+        }
     }
 }

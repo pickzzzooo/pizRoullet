@@ -37,11 +37,42 @@ public class RouletteCommand implements CommandExecutor, TabCompleter {
                 }
 
                 if (args.length < 2) {
-                    sender.sendMessage("§c[사용법] /다룰 테스트 [벌칙키]");
+                    sender.sendMessage("§c[사용법] /다룰 테스트 [벌칙키] 또는 /다룰 테스트 큐추가 [숫자]");
                     return true;
                 }
 
                 String key = args[1];
+
+                // [추가] 큐추가 명령어 처리
+                if (key.equalsIgnoreCase("큐추가")) {
+                    int count = 1; // 기본값 1번
+                    if (args.length >= 3) {
+                        try {
+                            count = Integer.parseInt(args[2]);
+                            if (count <= 0) {
+                                sender.sendMessage("§c[오류] 숫자는 1 이상이어야 합니다.");
+                                return true;
+                            }
+                        } catch (NumberFormatException e) {
+                            sender.sendMessage("§c[오류] 올바른 숫자를 입력해 주세요.");
+                            return true;
+                        }
+                    }
+
+                    if (!RouletteManager.isRunning()) {
+                        sender.sendMessage("§c진행 중인 룰렛 게임이 없습니다. 먼저 게임을 시작하세요.");
+                        return true;
+                    }
+
+                    // 지정된 횟수만큼 테스트용 큐 적재 (공용 API 활용)
+                    for (int i = 0; i < count; i++) {
+                        ToonationListener.addDonationToQueue("테스트유저");
+                    }
+                    sender.sendMessage("§a[테스트] 일반 룰렛 대기 큐에 §e" + count + "개§f의 데이터를 추가했습니다.");
+                    return true;
+                }
+
+                // 기존 벌칙 단일 테스트 로직
                 RewardType targetReward = RewardType.fromConfigKey(key);
 
                 if (targetReward == null) {
@@ -125,9 +156,14 @@ public class RouletteCommand implements CommandExecutor, TabCompleter {
             completions.add("설정");
             completions.add("테스트");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("테스트")) {
+            completions.add("큐추가"); // 탭 완성 목록에 추가
             for (RewardType type : RewardType.values()) {
                 completions.add(type.getConfigKey());
             }
+        } else if (args.length == 3 && args[0].equalsIgnoreCase("테스트") && args[1].equalsIgnoreCase("큐추가")) {
+            completions.add("1");
+            completions.add("5");
+            completions.add("10");
         }
 
         List<String> result = new ArrayList<>();

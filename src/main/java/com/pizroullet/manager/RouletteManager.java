@@ -23,9 +23,11 @@ public class RouletteManager {
     private static long startTime = 0;
     private static BukkitTask timerTask = null;
     private static Scoreboard rouletteScoreboard = null;
+    private static boolean isParticipantDead = false; // 사망 펄스
 
     public static void startGame(Player initiator, int target) {
         isGameStarted = true;
+        isParticipantDead = false;
         targetDiamonds = target;
         currentDiamonds = 0;
         startTime = System.currentTimeMillis();
@@ -78,7 +80,8 @@ public class RouletteManager {
 
     public static void stopGame() {
         isGameStarted = false;
-        participantUUID = null; // [추가] 세션 변수 초기화
+        isParticipantDead = false;
+        participantUUID = null;
 
         // 타이머 스케줄러 종료
         if (timerTask != null) {
@@ -189,4 +192,8 @@ public class RouletteManager {
     public static boolean isRunning() { return isGameStarted; }
     public static int getTargetDiamonds() { return targetDiamonds; }
     public static int getCurrentDiamonds() { return currentDiamonds; }
+
+    public static void setParticipantDead(boolean dead) { isParticipantDead = dead; }
+
+    public static boolean isPausedByDeath() { return isGameStarted && isParticipantDead; }
 }

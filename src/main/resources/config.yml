@@ -2,34 +2,36 @@
 # 0으로 설정 시 해당 벌칙은 비활성화(Off)됩니다.
 # 숫자가 높을수록 당첨 확률이 증가합니다. (예: 1과 3이면 각각 25%, 75% 확률)
 roulette-rewards:
-  monster_bundle_1: 2
-  diamond_increase: 4
-  resize_small: 1
-  drop_all: 1
-  cobweb_prison: 2
+  monster_bundle_1: 2   #몬스터 보따리1 (1단계 몬스터 3마리 소환)
+  diamond_increase: 4   #다이아 증가
+  resize_small: 1       # 작아지기
+  drop_all: 1           # 다버리기
+  cobweb_prison: 2      # 거미줄 감옥
 
-  monster_bundle_2: 2
-  zombie_raid: 2
-  silverfish_raid: 2
-  sand_prison: 2
-  tnt_spawn: 2
-  random_teleport: 1
-  lava_spawn: 2
+  monster_bundle_2: 2   # 몬스터 보따리2 (2단계 몬스터 1마리 소환)
+  zombie_raid: 2        # 좀비 습격
+  silverfish_raid: 2    # 좀벌레 습격
+  sand_prison: 2        # 모래감옥
+  tnt_spawn: 2          # tnt 소환
+  random_teleport: 1    # 랜덤텔포
+  lava_spawn: 2         # 용암소환
 
-  monster_bundle_3: 2
-  jump_map_1: 0
-  skydiving_1: 0
+  monster_bundle_3: 2   # 몬스터 보따리3 (2단계 몬스터 2마리 소환)
+  jump_map_1: 0         # 점프맵 (미구현)
+  skydiving_1: 0        # 스카이다이빙 (500 높이)
 
-  monster_bundle_4: 1
-  jump_map_2: 0
-  skydiving_2: 2
-  instant_die: 0
+  monster_bundle_4: 1   # 몬스터 보따리4 (3단계 몬스터 1마리 소환)
+  jump_map_2: 0         # 점프맵2 (미구현)
+  skydiving_2: 2        # 스카이다이빙 2500칸
+  instant_die: 0        # 즉사
+  debuff: 0             # 디버프 (미구현)
+
 
 # 룰렛 금액
 min-donation-amount: 3000
 
-# 특정 금액 후원 시 확정 발동할 벌칙 설정 (금액: 벌칙키)
+# 특정 금액 후원 시 확정 발동할 벌칙 설정
 fixed-donation-rewards:
-  10000: "diamond_increase"
-  30000: "random_teleport"
-  50000: "instant_die"
+  '10000': diamond_increase
+  '30000': random_teleport
+  '50000': instant_die

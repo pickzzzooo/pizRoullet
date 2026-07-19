@@ -431,7 +431,6 @@ public class RoulettePenaltyManager {
         scaleAttribute.setBaseValue(0.5);
         jumpAttribute.setBaseValue(0.35);
 
-        player.sendMessage("§6[다이아 룰렛] §e몸이 작아지고 점프력이 절반으로 감소합니다! (1분간)");
         player.playSound(player.getLocation(), Sound.ENTITY_CHICKEN_EGG, 1.0f, 1.5f);
 
         // 1분(1200틱) 뒤 복구하는 타이머 스케줄러 등록
@@ -588,58 +587,39 @@ public class RoulettePenaltyManager {
         int centerY = center.getBlockY();
         int centerZ = center.getBlockZ();
 
-        // 감염된 블록으로 변환하기 위해 임시 저장할 리스트
-        java.util.List<org.bukkit.block.Block> targetBlocks = new java.util.ArrayList<>();
+        // 1. 소리 효과 및 플레이어 정중앙 위치에 좀벌레 5마리 즉시 소환
+        player.playSound(center, org.bukkit.Sound.ENTITY_SILVERFISH_HURT, 1.0f, 0.8f);
 
-        // 1. 15x15x15 범위 탐색 (반경 -7 ~ +7)
+        for (int i = 0; i < 5; i++) {
+            // 오차 범위를 완전히 없애고 플레이어의 현재 X, Z 좌표 정중앙에 맞춤
+            // 발밑 블록에 끼지 않도록 Y축만 살짝(+0.1) 올린 위치
+            org.bukkit.Location spawnLoc = new org.bukkit.Location(
+                    world,
+                    center.getX(),
+                    center.getY() + 0.1,
+                    center.getZ(),
+                    center.getYaw(),
+                    center.getPitch()
+            );
+
+            org.bukkit.entity.Silverfish silverfish = world.spawn(spawnLoc, org.bukkit.entity.Silverfish.class);
+            if (silverfish != null) {
+                silverfish.setTarget(player);
+            }
+        }
+
+        // 2. 15x15x15 범위 탐색하여 돌/심층암을 감염된 블록으로 즉시 변환
         for (int x = -7; x <= 7; x++) {
             for (int y = -7; y <= 7; y++) {
                 for (int z = -7; z <= 7; z++) {
                     org.bukkit.block.Block block = world.getBlockAt(centerX + x, centerY + y, centerZ + z);
                     org.bukkit.Material type = block.getType();
 
-                    if (type == org.bukkit.Material.STONE || type == org.bukkit.Material.DEEPSLATE) {
-                        targetBlocks.add(block);
+                    if (type == org.bukkit.Material.STONE) {
+                        block.setType(org.bukkit.Material.INFESTED_STONE, false);
+                    } else if (type == org.bukkit.Material.DEEPSLATE) {
+                        block.setType(org.bukkit.Material.INFESTED_DEEPSLATE, false);
                     }
-                }
-            }
-        }
-
-        // 2. 지상/지하 판정 및 벌칙 수행
-        // 주변에 변환할 돌이나 심층암이 5개 미만이면 '지상'으로 간주하고 직접 스폰 가동
-        if (targetBlocks.size() < 5) {
-            player.playSound(center, org.bukkit.Sound.ENTITY_SILVERFISH_AMBIENT, 1.0f, 1.0f);
-
-            for (int i = 0; i < 20; i++) {
-                double angle = RANDOM.nextDouble() * 2 * Math.PI;
-                double distance = 1.5 + (RANDOM.nextDouble() * 2.0);
-                int spawnX = (int) Math.round(centerX + (Math.cos(angle) * distance));
-                int spawnZ = (int) Math.round(centerZ + (Math.sin(angle) * distance));
-
-                int spawnY = world.getHighestBlockYAt(spawnX, spawnZ);
-                if (Math.abs(spawnY - centerY) > 3) {
-                    spawnY = centerY;
-                } else {
-                    spawnY += 1;
-                }
-
-                org.bukkit.Location spawnLoc = new org.bukkit.Location(world, spawnX + 0.5, spawnY, spawnZ + 0.5);
-                org.bukkit.entity.Silverfish silverfish = world.spawn(spawnLoc, org.bukkit.entity.Silverfish.class);
-
-                if (silverfish != null) {
-                    silverfish.setTarget(player);
-                }
-            }
-        }
-        // 주변에 돌이 가득한 지하인 경우 블록 감염 트리거
-        else {
-            player.playSound(center, org.bukkit.Sound.ENTITY_SILVERFISH_HURT, 1.0f, 0.5f);
-
-            for (org.bukkit.block.Block b : targetBlocks) {
-                if (b.getType() == org.bukkit.Material.STONE) {
-                    b.setType(org.bukkit.Material.INFESTED_STONE, false);
-                } else if (b.getType() == org.bukkit.Material.DEEPSLATE) {
-                    b.setType(org.bukkit.Material.INFESTED_DEEPSLATE, false);
                 }
             }
         }
@@ -858,26 +838,19 @@ public class RoulettePenaltyManager {
         player.teleport(teleportLoc);
     }
 
-    /**
-     * 지정된 플레이어 중심 7x7x7 범위의 블록을 공기로 변경하여 제거합니다.
-     * 추가로 사방 끝 벽면에 시야 확보용 발광석(GLOWSTONE)을 안전하게 매립합니다.
-     */
     private static void clearSurroundingBlocks(Player player) {
         if (player == null || !player.isOnline()) return;
 
         Location center = player.getLocation();
         int centerX = center.getBlockX();
-        int centerY = center.getBlockY();
+        int centerY = center.getBlockY(); // 플레이어 발 위치 (y = 0)
         int centerZ = center.getBlockZ();
         org.bukkit.World world = center.getWorld();
 
-        // 1. 7x7x7 범위 공기로 청소
+        // 1. 7x7x7 범위 공기로 청소 (Y축을 플레이어 위치인 0부터 6까지 총 7칸)
         for (int x = -3; x <= 3; x++) {
-            for (int y = -1; y <= 5; y++) {
+            for (int y = 0; y <= 6; y++) {
                 for (int z = -3; z <= 3; z++) {
-                    // 플레이어 발밑 블록 보존
-                    if (x == 0 && y == -1 && z == 0) continue;
-
                     org.bukkit.block.Block block = world.getBlockAt(centerX + x, centerY + y, centerZ + z);
                     org.bukkit.Material type = block.getType();
 
@@ -893,7 +866,10 @@ public class RoulettePenaltyManager {
                 }
             }
         }
-        int glowstoneY = centerY + 5;
+
+        // 지운 공간의 맨 위쪽 레이어(y = 6)에 발광석 배치
+        int glowstoneY = centerY + 6;
+
         // 발광석 설치
         world.getBlockAt(centerX + 3, glowstoneY, centerZ).setType(org.bukkit.Material.GLOWSTONE, false); // 동쪽 끝
         world.getBlockAt(centerX - 3, glowstoneY, centerZ).setType(org.bukkit.Material.GLOWSTONE, false); // 서쪽 끝
@@ -910,17 +886,14 @@ public class RoulettePenaltyManager {
 
         Location center = player.getLocation();
         int centerX = center.getBlockX();
-        int centerY = center.getBlockY();
+        int centerY = center.getBlockY(); // 플레이어 발 위치 (y = 0)
         int centerZ = center.getBlockZ();
         org.bukkit.World world = center.getWorld();
 
-        // 1. 5x5x7 범위 공기로 청소 (X: 5칸, Z: 5칸, Y: -1부터 5까지 총 7칸)
+        // 1. 5x5x7 범위 공기로 청소 (X: 5칸, Z: 5칸, Y: 0부터 6까지 총 7칸)
         for (int x = -2; x <= 2; x++) {
-            for (int y = -1; y <= 5; y++) {
+            for (int y = 0; y <= 6; y++) {
                 for (int z = -2; z <= 2; z++) {
-                    // 플레이어 발밑 블록 보존
-                    if (x == 0 && y == -1 && z == 0) continue;
-
                     org.bukkit.block.Block block = world.getBlockAt(centerX + x, centerY + y, centerZ + z);
                     org.bukkit.Material type = block.getType();
 
@@ -937,8 +910,8 @@ public class RoulettePenaltyManager {
             }
         }
 
-        // 가장 높은 Y축 벽면에 발광석 배치
-        int glowstoneY = centerY + 5;
+        // 지운 공간의 맨 위쪽 레이어(y = 6)에 발광석 배치
+        int glowstoneY = centerY + 6;
 
         // 5x5 범위의 끝 벽면(반경 2블록 위치)에 발광석 설치
         world.getBlockAt(centerX + 2, glowstoneY, centerZ).setType(org.bukkit.Material.GLOWSTONE, false); // 동쪽 끝
