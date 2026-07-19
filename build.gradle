@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.pizroullet'
-version = '01.01.0709'
+version = '01.01.0711'
 
 repositories {
     mavenCentral()

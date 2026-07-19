@@ -1,5 +1,11 @@
 package com.pizroullet;
 
+import com.pizroullet.listner.RouletteGameListener;
+import com.pizroullet.listner.RouletteGuiListener;
+import com.pizroullet.listner.RouletteItemListener;
+import com.pizroullet.listner.ToonationListener;
+import com.pizroullet.manager.RouletteConfigManager;
+import com.pizroullet.util.RouletteProbabilityCalculator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class PizRoullet extends JavaPlugin {
@@ -22,11 +28,14 @@ public class PizRoullet extends JavaPlugin {
 
         // 리스너 등록
         getServer().getPluginManager().registerEvents(new RouletteGuiListener(), this);
-        getServer().getPluginManager().registerEvents(new RouletteGameListener(), this); 
-
-        if (getCommand("다룰") != null) {
-            getCommand("다룰").setExecutor(new RouletteCommand());
-        }
+        getServer().getPluginManager().registerEvents(new RouletteGameListener(), this);
+        getServer().getPluginManager().registerEvents(new RouletteItemListener(), this);
+        getServer().getPluginManager().registerEvents(new ToonationListener(), this);
+        
+        // 명령어 등록
+        RouletteCommand rouletteCommand = new RouletteCommand();
+        getCommand("다룰").setExecutor(rouletteCommand);
+        getCommand("다룰").setTabCompleter(rouletteCommand);
     }
 
     @Override

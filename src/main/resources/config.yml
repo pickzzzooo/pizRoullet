@@ -2,14 +2,34 @@
 # 0으로 설정 시 해당 벌칙은 비활성화(Off)됩니다.
 # 숫자가 높을수록 당첨 확률이 증가합니다. (예: 1과 3이면 각각 25%, 75% 확률)
 roulette-rewards:
-  diamond_increase: 10
-  monster_spawn: 15
-  lava_place: 5
-  drop_all: 2
-  resize_player: 8
-  random_teleport: 12
-  tnt_spawn: 10
-  sand_prison: 7
-  cobweb_prison: 7
-  water_clutch: 5
-  jump_map: 5
+  monster_bundle_1: 2
+  diamond_increase: 4
+  resize_small: 1
+  drop_all: 1
+  cobweb_prison: 2
+
+  monster_bundle_2: 2
+  zombie_raid: 2
+  silverfish_raid: 2
+  sand_prison: 2
+  tnt_spawn: 2
+  random_teleport: 1
+  lava_spawn: 2
+
+  monster_bundle_3: 2
+  jump_map_1: 0
+  skydiving_1: 0
+
+  monster_bundle_4: 1
+  jump_map_2: 0
+  skydiving_2: 2
+  instant_die: 0
+
+# 룰렛 금액
+min-donation-amount: 3000
+
+# 특정 금액 후원 시 확정 발동할 벌칙 설정 (금액: 벌칙키)
+fixed-donation-rewards:
+  10000: "diamond_increase"
+  30000: "random_teleport"
+  50000: "instant_die"
